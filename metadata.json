@@ -1,0 +1,5 @@
+{
+  "name": "React Pokédex",
+  "description": "A visually appealing, frontend-only Pokédex application built with React and Tailwind CSS. It allows users to browse Pokémon by generation, fetching data directly from the public PokeAPI.",
+  "requestFramePermissions": []
+}
