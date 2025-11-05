@@ -26,7 +26,7 @@ const PokedexPage: React.FC = () => {
   return (
     <div className="w-full max-w-4xl mx-auto">
       <header className="text-center mb-8">
-        <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">React Pokédex</h1>
+        <h1 className="text-4xl sm:text-5xl font-bold text-white tracking-tight">Pokedex</h1>
         <p className="text-poke-gray-light mt-2">Browse Pokémon from your favorite generations.</p>
       </header>
 
