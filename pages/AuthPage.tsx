@@ -6,6 +6,7 @@ const AuthPage: React.FC = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [username, setUsername] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
@@ -21,7 +22,20 @@ const AuthPage: React.FC = () => {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
       } else {
-        const { error } = await supabase.auth.signUp({ email, password });
+        if (username.length < 3) {
+            setError('Username must be at least 3 characters long.');
+            setLoading(false);
+            return;
+        }
+        const { error } = await supabase.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    username: username,
+                }
+            }
+        });
         if (error) throw error;
         setMessage('Check your email for a confirmation link!');
       }
@@ -43,6 +57,26 @@ const AuthPage: React.FC = () => {
 
         <div className="bg-poke-gray-dark p-8 rounded-lg shadow-2xl">
           <form onSubmit={handleAuth} className="space-y-6">
+            {!isLogin && (
+                 <div>
+                    <label htmlFor="username" className="block text-sm font-medium text-gray-300">
+                        Username
+                    </label>
+                    <div className="mt-1">
+                        <input
+                        id="username"
+                        name="username"
+                        type="text"
+                        autoComplete="username"
+                        required
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
+                        className="w-full bg-gray-800 text-white p-3 rounded-md border border-gray-600 focus:ring-poke-yellow focus:border-poke-yellow transition"
+                        placeholder="ash_ketchum"
+                        />
+                    </div>
+                </div>
+            )}
             <div>
               <label htmlFor="email" className="block text-sm font-medium text-gray-300">
                 Email address

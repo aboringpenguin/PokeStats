@@ -1,9 +1,11 @@
 import React, { useMemo, useState, useRef } from 'react';
 import { usePokemonData } from '../contexts/PokemonDataContext';
 import { useRatings } from '../contexts/RatingsContext';
-import { Pokemon, GenerationKey } from '../types';
+import { Pokemon, GenerationKey, RatedPokemon } from '../types';
 import PokeballIcon from '../components/icons/PokeballIcon';
 import { GENERATION_RANGES, TYPE_COLORS } from '../constants';
+import RatingHighlightsByGeneration from '../components/TypeEffectivenessSummary';
+import AverageRatingByGeneration from '../components/dashboard/AverageRatingByGeneration';
 
 // This is a browser-only library, so we need to declare it for TypeScript
 declare const domtoimage: any;
@@ -17,7 +19,7 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, description, suffix }) => {
     return (
-        <div className="bg-poke-gray-dark/50 p-6 rounded-lg shadow-lg">
+        <div className="bg-poke-gray-dark p-6 rounded-lg shadow-lg">
             <p className="text-sm font-medium text-gray-400">{title}</p>
             <p className="mt-1 text-4xl font-semibold tracking-tight text-white">
                 {value}<span className="text-2xl text-gray-300">{suffix}</span>
@@ -27,8 +29,6 @@ const StatCard: React.FC<StatCardProps> = ({ title, value, description, suffix }
     );
 };
 
-
-type RatedPokemon = Pokemon & { rating: number };
 
 interface TypeRatingBarsProps {
     ratedPokemon: RatedPokemon[];
@@ -63,7 +63,7 @@ const TypeRatingBars: React.FC<TypeRatingBarsProps> = ({ ratedPokemon }) => {
     }
 
     return (
-        <div className="bg-poke-gray-dark/50 p-6 rounded-lg shadow-lg">
+        <div className="bg-poke-gray-dark p-6 rounded-lg shadow-lg">
             <h3 className="text-xl font-bold text-white mb-4">Average Rating by Type</h3>
             <div className="space-y-3">
                 {averageRatingsByType.map(({ type, average, color }) => (
@@ -89,18 +89,18 @@ const TypeRatingBars: React.FC<TypeRatingBarsProps> = ({ ratedPokemon }) => {
 };
 
 const RatedPokemonList: React.FC<{ title: string; pokemonList: RatedPokemon[] }> = ({ title, pokemonList }) => (
-    <div className="bg-poke-gray-dark/50 p-6 rounded-lg shadow-lg">
+    <div className="bg-poke-gray-dark p-6 rounded-lg shadow-lg h-full flex flex-col">
         <h3 className="text-xl font-bold text-white mb-4">{title}</h3>
         {pokemonList.length === 0 ? (
             <p className="text-gray-400">No rated Pokémon in this category.</p>
         ) : (
-            <ul className="space-y-3">
+            <ul className="flex flex-col flex-grow gap-2">
                 {pokemonList.map(p => (
-                    <li key={p.id} className="flex items-center gap-4 bg-gray-800/50 p-2 rounded-md">
-                        <div className="w-12 h-12 bg-gray-900/50 rounded-full flex items-center justify-center">
+                    <li key={p.id} className="flex items-center gap-3 bg-gray-800/50 p-2 rounded-md flex-grow">
+                        <div className="w-12 h-12 bg-gray-900/50 rounded-full flex items-center justify-center flex-shrink-0">
                             <img src={p.sprite} alt={p.name} className="w-12 h-12" />
                         </div>
-                        <span className="capitalize font-semibold flex-1 text-gray-200">{p.name}</span>
+                        <span className="capitalize font-semibold flex-1 text-gray-200 truncate">{p.name}</span>
                         <span className="font-bold text-lg text-poke-yellow">{p.rating}</span>
                     </li>
                 ))}
@@ -113,7 +113,7 @@ const RatingDistributionChart: React.FC<{ data: Record<string, number> }> = ({ d
     const maxValue = Math.max(...(Object.values(data) as number[]));
     const labels = Object.keys(data);
     return (
-        <div className="bg-poke-gray-dark/50 p-6 rounded-lg shadow-lg">
+        <div className="bg-poke-gray-dark p-6 rounded-lg shadow-lg">
             <h3 className="text-xl font-bold text-white mb-6">Rating Distribution</h3>
             <div className="flex items-end justify-between gap-2 h-64 px-4">
                 {labels.map((label, index) => (
@@ -169,11 +169,7 @@ const PokeStatsDashboardPage: React.FC = () => {
     }, [filteredRatedList]);
 
     const bottomRated = useMemo(() => {
-        const sorted = [...filteredRatedList].sort((a, b) => a.rating - b.rating || a.id - b.id);
-        if (sorted.length <= 5) {
-            return sorted.filter(p => p.rating < 75);
-        }
-        return sorted.slice(0, 5);
+        return [...filteredRatedList].sort((a, b) => a.rating - b.rating || a.id - b.id).slice(0, 5);
     }, [filteredRatedList]);
 
     const distributionData = useMemo(() => {
@@ -184,7 +180,7 @@ const PokeStatsDashboardPage: React.FC = () => {
         filteredRatedList.forEach(p => {
             const bin = Math.floor(p.rating / 10);
             
-            if (bin >= 9) {
+            if (p.rating >= 90) {
                 bins['90-100']++;
             } else {
                  const keyIndex = Math.max(0, bin);
@@ -225,9 +221,9 @@ const PokeStatsDashboardPage: React.FC = () => {
     
     return (
       <div className="w-full max-w-7xl mx-auto">
-        <header className="text-center mb-8">
-          <h1 className="text-4xl sm:text-5xl font-bold text-poke-yellow tracking-tight">Your PokéStats</h1>
-          <p className="text-poke-gray-light mt-2 max-w-2xl mx-auto">An analysis of your Pokémon ratings. Create a snapshot to share your trainer profile!</p>
+         <header className="text-center mb-8">
+            <h1 className="text-4xl sm:text-5xl font-bold text-poke-yellow tracking-tight">Your PokéStats</h1>
+            <p className="text-poke-gray-light mt-2">An analysis of your Pokémon ratings. Create a snapshot to share your trainer profile!</p>
         </header>
 
         <div className="bg-poke-gray-dark/50 p-4 rounded-lg mb-8 flex flex-wrap items-center justify-center gap-4">
@@ -248,38 +244,47 @@ const PokeStatsDashboardPage: React.FC = () => {
                     <option key={key} value={key}>{GENERATION_RANGES[key].name}</option>
                 ))}
             </select>
-            <button onClick={handleSnapshot} className="px-4 py-2 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 transition-colors flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="w-5 h-5"><path strokeLinecap="round" strokeLinejoin="round" d="M6.827 6.175A2.31 2.31 0 0 1 5.186 7.23c-.38.054-.757.112-1.134.175C2.999 7.58 2.25 8.507 2.25 9.574V18a2.25 2.25 0 0 0 2.25 2.25h15A2.25 2.25 0 0 0 21.75 18V9.574c0-1.067-.75-1.994-1.802-2.169a47.865 47.865 0 0 0-1.134-.175 2.31 2.31 0 0 1-1.64-1.055l-.822-1.316a2.192 2.192 0 0 0-1.736-1.039 48.776 48.776 0 0 0-5.232 0 2.192 2.192 0 0 0-1.736 1.039l-.821 1.316Z" /><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 12.75a4.5 4.5 0 1 1-9 0 4.5 4.5 0 0 1 9 0ZM18.75 10.5h.008v.008h-.008V10.5Z" /></svg>
+            <button
+                onClick={handleSnapshot}
+                className="px-6 py-2 bg-purple-600 text-white font-semibold rounded-md hover:bg-purple-700 transition-colors"
+            >
                 Generate Snapshot
             </button>
         </div>
-        
-        <div ref={snapshotRef} className="p-0 sm:p-4">
+
+         <div ref={snapshotRef} className="p-0 sm:p-4">
             <div className="p-6 bg-poke-gray-darkest rounded-lg shadow-2xl">
-                {trainerName && (
-                    <div className="mb-6 pb-4 border-b-2 border-poke-yellow/30">
-                        <h2 className="text-3xl font-bold text-white text-center tracking-wider">{trainerName}'s Trainer Card</h2>
-                    </div>
-                )}
+                <div className="mb-6 pb-4 border-b-2 border-poke-yellow/30">
+                    <h2 className="text-3xl font-bold text-white text-center tracking-wider">
+                        {trainerName ? `${trainerName}'s Trainer Card` : 'Trainer Card'}
+                    </h2>
+                </div>
+                
                 {filteredRatedList.length === 0 ? (
                     <div className="text-center py-16 bg-poke-gray-dark rounded-lg">
                         <p className="text-xl text-gray-400">No Pokémon have been rated in this generation.</p>
                         <p className="mt-2 text-gray-500">Select a different generation or rate some Pokémon!</p>
                     </div>
                 ) : (
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
                         {/* Left Column */}
-                        <div className="lg:col-span-1 space-y-6">
-                            <StatCard title="Overall Average" value={stats.avg} suffix="/ 100" description="Average of all your ratings" />
-                            <StatCard title="Total Pokémon Rated" value={stats.total} description="Unique Pokémon you've rated" />
+                        <div className="lg:col-span-1 flex flex-col gap-6">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                <StatCard title="Overall Average" value={stats.avg} suffix="/ 100" description="Average of all your ratings" />
+                                <StatCard title="Total Pokémon Rated" value={stats.total} description="Unique Pokémon you've rated" />
+                            </div>
                             <RatedPokemonList title="Top Rated" pokemonList={topRated} />
                             <RatedPokemonList title="Bottom Rated" pokemonList={bottomRated} />
+                            <div className="flex-grow">
+                                <AverageRatingByGeneration ratedPokemon={filteredRatedList} />
+                            </div>
                         </div>
 
                         {/* Right Column */}
-                        <div className="lg:col-span-2 space-y-6">
+                        <div className="lg:col-span-1 flex flex-col gap-6">
                             <TypeRatingBars ratedPokemon={filteredRatedList} />
                             <RatingDistributionChart data={distributionData} />
+                            <RatingHighlightsByGeneration ratedPokemon={filteredRatedList} />
                         </div>
                     </div>
                 )}

@@ -32,7 +32,7 @@ const NavItem: React.FC<{
 
 
 const Navbar: React.FC<NavbarProps> = ({ currentPage, setCurrentPage }) => {
-    const { user, signOut } = useAuth();
+    const { user, profile, signOut } = useAuth();
     
     return (
         <header className="bg-poke-gray-dark sticky top-0 z-50 shadow-lg">
@@ -49,7 +49,7 @@ const Navbar: React.FC<NavbarProps> = ({ currentPage, setCurrentPage }) => {
                             <NavItem label="PokéStats" page="dashboard" currentPage={currentPage} onClick={setCurrentPage} />
                         </div>
                          <div className="flex items-center gap-3">
-                            <span className="text-sm text-gray-400 hidden lg:block">{user?.email}</span>
+                            <span className="text-sm text-gray-400 hidden lg:block">{profile?.username || user?.email}</span>
                             <button
                                 onClick={signOut}
                                 className="px-3 py-2 text-sm font-medium text-gray-300 hover:bg-poke-red hover:text-white rounded-md transition-colors"

@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect, useMemo, useCallback } from 'react';
-import { Pokemon, Team, TeamContextType } from '../types';
+import { Pokemon, Team, TeamContextType, TeamMember } from '../types';
 import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
 import { usePokemonData } from './PokemonDataContext';
@@ -13,6 +13,8 @@ export function useTeam() {
   }
   return context;
 }
+
+const defaultEVs = { hp: 0, attack: 0, defense: 0, sp_atk: 0, sp_def: 0, speed: 0 };
 
 export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const { user } = useAuth();
@@ -43,16 +45,30 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const { data: membersData, error: membersError } = await supabase
         .from('team_members')
-        .select('team_id, pokemon_id')
+        .select('*')
         .in('team_id', teamIds);
       if (membersError) throw membersError;
       
       const teamsMap: Record<string, Team> = {};
       for (const team of teamsData) {
-        const members = membersData
+        const members: TeamMember[] = membersData
           .filter(m => m.team_id === team.id)
-          .map(m => allPokemon[m.pokemon_id])
-          .filter(Boolean);
+          .map(m => {
+              const basePokemon = allPokemon[m.pokemon_id];
+              if (!basePokemon) return null;
+              return {
+                  ...basePokemon,
+                  instanceId: m.id,
+                  nickname: m.nickname || '',
+                  ability: m.ability || '',
+                  held_item: m.held_item || '',
+                  nature: m.nature || 'Hardy',
+                  moves: m.moves || [null, null, null, null],
+                  evs: m.evs || defaultEVs,
+              };
+          })
+          .filter((m): m is TeamMember => m !== null);
+          
         teamsMap[team.id] = { ...team, members };
       }
 
@@ -83,7 +99,6 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     fetchTeams();
   }, [fetchTeams]);
 
-
   useEffect(() => {
     try {
       window.localStorage.setItem('active-pokemon-team-id', JSON.stringify(activeTeamId));
@@ -109,21 +124,35 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
   }, [user]);
 
+  const setActiveTeam = useCallback((teamId: string | null) => {
+      setActiveTeamId(teamId);
+  }, []);
+
   const deleteTeam = useCallback(async (teamId: string) => {
-    const { error: memberError } = await supabase.from('team_members').delete().eq('team_id', teamId);
-    if (memberError) {
-      console.error("Error deleting team members:", memberError.message);
+    if (!user) return;
+
+    const { error } = await supabase
+      .from('teams')
+      .delete()
+      .eq('id', teamId);
+
+    if (error) {
+      console.error("Error deleting team:", error.message);
       return;
     }
 
-    const { error: teamError } = await supabase.from('teams').delete().eq('id', teamId);
-    if (teamError) {
-      console.error("Error deleting team:", teamError.message);
-      return;
+    const newTeams = { ...teams };
+    delete newTeams[teamId];
+
+    if (activeTeamId === teamId) {
+      const remainingTeamIds = Object.keys(newTeams);
+      const newActiveId = remainingTeamIds.length > 0 ? remainingTeamIds[0] : null;
+      setActiveTeamId(newActiveId);
     }
     
-    await fetchTeams();
-  }, [fetchTeams]);
+    setTeams(newTeams);
+  }, [user, teams, activeTeamId]);
+
 
   const renameTeam = useCallback(async (teamId: string, newName: string) => {
       const { error } = await supabase.from('teams').update({ name: newName }).eq('id', teamId);
@@ -137,32 +166,43 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
   }, []);
 
-  const setActiveTeam = useCallback((teamId: string | null) => {
-      setActiveTeamId(teamId);
-  }, []);
-
   const addPokemonToTeam = useCallback(async (pokemon: Pokemon) => {
     if (!activeTeamId || !user) return;
     
     const activeTeam = teams[activeTeamId];
-    if (!activeTeam || activeTeam.members.length >= 6 || activeTeam.members.some(p => p.id === pokemon.id)) {
-        return;
-    }
+    if (!activeTeam || activeTeam.members.length >= 6) return;
     
-    const { error } = await supabase.from('team_members').insert({ team_id: activeTeamId, pokemon_id: pokemon.id });
+    const newMemberData = {
+        team_id: activeTeamId,
+        pokemon_id: pokemon.id,
+        nickname: '',
+        ability: '',
+        held_item: '',
+        nature: 'Hardy',
+        moves: [null, null, null, null],
+        evs: defaultEVs,
+    };
+
+    const { data, error } = await supabase.from('team_members').insert(newMemberData).select().single();
+    
     if (error) {
         console.error("Error adding pokemon to team:", error.message);
     } else {
+        const newMember: TeamMember = {
+            ...pokemon,
+            instanceId: data.id,
+            ...newMemberData,
+        };
         setTeams(prev => {
-            const updatedTeam = { ...activeTeam, members: [...activeTeam.members, pokemon] };
+            const updatedTeam = { ...activeTeam, members: [...activeTeam.members, newMember] };
             return { ...prev, [activeTeamId]: updatedTeam };
         });
     }
   }, [activeTeamId, user, teams]);
 
-  const removePokemonFromTeam = useCallback(async (pokemonId: number) => {
+  const removePokemonFromTeam = useCallback(async (instanceId: string) => {
     if (!activeTeamId || !user) return;
-    const { error } = await supabase.from('team_members').delete().match({ team_id: activeTeamId, pokemon_id: pokemonId });
+    const { error } = await supabase.from('team_members').delete().eq('id', instanceId);
 
     if (error) {
         console.error("Error removing pokemon:", error.message);
@@ -170,18 +210,46 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
          setTeams(prev => {
             const activeTeam = prev[activeTeamId];
             if (!activeTeam) return prev;
-            const updatedTeam = { ...activeTeam, members: activeTeam.members.filter(p => p.id !== pokemonId) };
+            const updatedTeam = { ...activeTeam, members: activeTeam.members.filter(m => m.instanceId !== instanceId) };
             return { ...prev, [activeTeamId]: updatedTeam };
         });
     }
   }, [activeTeamId, user]);
+
+  const updateTeamMember = useCallback(async (updatedMember: TeamMember) => {
+      if (!activeTeamId) return;
+
+      const { instanceId, id: pokemonId, name, sprite, types, stats, generation, ...loadout } = updatedMember;
+      
+      const { error } = await supabase
+        .from('team_members')
+        .update(loadout)
+        .eq('id', instanceId);
+
+      if (error) {
+          console.error("Error updating team member:", error.message);
+      } else {
+          setTeams(prev => {
+              const activeTeam = prev[activeTeamId];
+              if (!activeTeam) return prev;
+              const memberIndex = activeTeam.members.findIndex(m => m.instanceId === instanceId);
+              if (memberIndex === -1) return prev;
+              
+              const updatedMembers = [...activeTeam.members];
+              updatedMembers[memberIndex] = updatedMember;
+              
+              const updatedTeam = { ...activeTeam, members: updatedMembers };
+              return { ...prev, [activeTeamId]: updatedTeam };
+          });
+      }
+  }, [activeTeamId]);
 
   const activeTeam = useMemo(() => {
       if (!activeTeamId || !teams[activeTeamId]) return null;
       return teams[activeTeamId];
   }, [teams, activeTeamId]);
 
-  const value = useMemo(() => ({ teams, activeTeamId, activeTeam, createTeam, deleteTeam, renameTeam, setActiveTeam, addPokemonToTeam, removePokemonFromTeam, isTeamsLoading }), [teams, activeTeamId, activeTeam, createTeam, deleteTeam, renameTeam, setActiveTeam, addPokemonToTeam, removePokemonFromTeam, isTeamsLoading]);
+  const value = useMemo(() => ({ teams, activeTeamId, activeTeam, createTeam, deleteTeam, renameTeam, setActiveTeam, addPokemonToTeam, removePokemonFromTeam, updateTeamMember, isTeamsLoading }), [teams, activeTeamId, activeTeam, createTeam, deleteTeam, renameTeam, setActiveTeam, addPokemonToTeam, removePokemonFromTeam, updateTeamMember, isTeamsLoading]);
 
   return <TeamContext.Provider value={value}>{children}</TeamContext.Provider>;
 };
