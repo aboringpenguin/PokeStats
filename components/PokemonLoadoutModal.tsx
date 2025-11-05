@@ -83,15 +83,15 @@ const PokemonLoadoutModal: React.FC<PokemonLoadoutModalProps> = ({ member, onClo
 
     const handleEvChange = (stat: keyof EVs, value: number) => {
         const newEvs = { ...loadout.evs, [stat]: value };
-        // Fix: Cast value to number to fix reduce operation on `unknown` type from Object.values.
-        const total = Object.values(newEvs).reduce((sum, v) => sum + Number(v), 0);
+        // Fix: The result of Object.values is `unknown[]`, which causes type errors in `reduce`. Casting the array to `number[]` ensures `v` is typed as a number.
+        const total = (Object.values(newEvs) as number[]).reduce((sum, v) => sum + v, 0);
         if (total <= 510) {
             setLoadout(prev => ({ ...prev, evs: newEvs }));
         }
     };
 
-    // Fix: Cast value to number to fix reduce operation on `unknown` type from Object.values.
-    const totalEvs = useMemo(() => Object.values(loadout.evs).reduce((sum, v) => sum + Number(v), 0), [loadout.evs]);
+    // Fix: The result of Object.values is `unknown[]`, which causes type errors in `reduce`. Casting the array to `number[]` ensures `v` is typed as a number.
+    const totalEvs = useMemo(() => (Object.values(loadout.evs) as number[]).reduce((sum, v) => sum + v, 0), [loadout.evs]);
 
     const finalStats = useMemo(() => {
         const stats: Partial<PokemonStat> = {};
