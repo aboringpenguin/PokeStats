@@ -33,7 +33,6 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!user || !allPokemon) return;
     try {
       setIsLoading(true);
-      // Fetch teams for the current user
       const { data: teamsData, error: teamsError } = await supabase
         .from('teams')
         .select('id, name')
@@ -42,7 +41,6 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
       const teamIds = teamsData.map(t => t.id);
 
-      // Fetch all members for those teams in one go
       const { data: membersData, error: membersError } = await supabase
         .from('team_members')
         .select('team_id, pokemon_id')
@@ -54,23 +52,32 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         const members = membersData
           .filter(m => m.team_id === team.id)
           .map(m => allPokemon[m.pokemon_id])
-          .filter(Boolean); // Filter out any pokemon that might not be in allPokemon map
+          .filter(Boolean);
         teamsMap[team.id] = { ...team, members };
       }
 
       setTeams(teamsMap);
 
-      // Validate active team ID
-      if (activeTeamId && !teamsMap[activeTeamId]) {
-        setActiveTeamId(null);
-      }
+      setActiveTeamId(prevActiveId => {
+        if (prevActiveId && !teamsMap[prevActiveId]) {
+          const remainingTeamIds = Object.keys(teamsMap);
+          return remainingTeamIds[0] || null;
+        }
+        if (!prevActiveId && Object.keys(teamsMap).length > 0) {
+            const storedId = window.localStorage.getItem('active-pokemon-team-id');
+            const parsedId = storedId ? JSON.parse(storedId) : null;
+            if (parsedId && teamsMap[parsedId]) return parsedId;
+            return Object.keys(teamsMap)[0];
+        }
+        return prevActiveId;
+      });
 
     } catch (error: any) {
         console.error("Error fetching teams:", error.message);
     } finally {
         setIsLoading(false);
     }
-  }, [user, allPokemon, activeTeamId]);
+  }, [user, allPokemon]);
 
   useEffect(() => {
     fetchTeams();
@@ -103,24 +110,20 @@ export const TeamProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   }, [user]);
 
   const deleteTeam = useCallback(async (teamId: string) => {
-    // Delete members first due to foreign key constraints
     const { error: memberError } = await supabase.from('team_members').delete().eq('team_id', teamId);
-    if (memberError) return console.error("Error deleting team members:", memberError.message);
+    if (memberError) {
+      console.error("Error deleting team members:", memberError.message);
+      return;
+    }
 
     const { error: teamError } = await supabase.from('teams').delete().eq('id', teamId);
-    if (teamError) return console.error("Error deleting team:", teamError.message);
-
-    setTeams(prev => {
-        const newTeams = {...prev};
-        delete newTeams[teamId];
-        return newTeams;
-    });
-
-    if (activeTeamId === teamId) {
-        const remainingTeamIds = Object.keys(teams).filter(id => id !== teamId);
-        setActiveTeamId(remainingTeamIds[0] || null);
+    if (teamError) {
+      console.error("Error deleting team:", teamError.message);
+      return;
     }
-  }, [activeTeamId, teams]);
+    
+    await fetchTeams();
+  }, [fetchTeams]);
 
   const renameTeam = useCallback(async (teamId: string, newName: string) => {
       const { error } = await supabase.from('teams').update({ name: newName }).eq('id', teamId);

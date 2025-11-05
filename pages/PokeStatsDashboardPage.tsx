@@ -6,9 +6,7 @@ import PokeballIcon from '../components/icons/PokeballIcon';
 import { GENERATION_RANGES, TYPE_COLORS } from '../constants';
 
 // This is a browser-only library, so we need to declare it for TypeScript
-declare const html2canvas: any;
-
-// -- INLINED COMPONENTS TO FIX SNAPSHOT TRANSPARENCY --
+declare const domtoimage: any;
 
 interface StatCardProps {
     title: string;
@@ -19,7 +17,7 @@ interface StatCardProps {
 
 const StatCard: React.FC<StatCardProps> = ({ title, value, description, suffix }) => {
     return (
-        <div className="bg-poke-gray-dark p-6 rounded-lg shadow-lg">
+        <div className="bg-poke-gray-dark/50 p-6 rounded-lg shadow-lg">
             <p className="text-sm font-medium text-gray-400">{title}</p>
             <p className="mt-1 text-4xl font-semibold tracking-tight text-white">
                 {value}<span className="text-2xl text-gray-300">{suffix}</span>
@@ -65,7 +63,7 @@ const TypeRatingBars: React.FC<TypeRatingBarsProps> = ({ ratedPokemon }) => {
     }
 
     return (
-        <div className="bg-poke-gray-dark p-6 rounded-lg shadow-lg">
+        <div className="bg-poke-gray-dark/50 p-6 rounded-lg shadow-lg">
             <h3 className="text-xl font-bold text-white mb-4">Average Rating by Type</h3>
             <div className="space-y-3">
                 {averageRatingsByType.map(({ type, average, color }) => (
@@ -91,7 +89,7 @@ const TypeRatingBars: React.FC<TypeRatingBarsProps> = ({ ratedPokemon }) => {
 };
 
 const RatedPokemonList: React.FC<{ title: string; pokemonList: RatedPokemon[] }> = ({ title, pokemonList }) => (
-    <div className="bg-poke-gray-dark p-6 rounded-lg shadow-lg">
+    <div className="bg-poke-gray-dark/50 p-6 rounded-lg shadow-lg">
         <h3 className="text-xl font-bold text-white mb-4">{title}</h3>
         {pokemonList.length === 0 ? (
             <p className="text-gray-400">No rated Pokémon in this category.</p>
@@ -115,7 +113,7 @@ const RatingDistributionChart: React.FC<{ data: Record<string, number> }> = ({ d
     const maxValue = Math.max(...(Object.values(data) as number[]));
     const labels = Object.keys(data);
     return (
-        <div className="bg-poke-gray-dark p-6 rounded-lg shadow-lg">
+        <div className="bg-poke-gray-dark/50 p-6 rounded-lg shadow-lg">
             <h3 className="text-xl font-bold text-white mb-6">Rating Distribution</h3>
             <div className="flex items-end justify-between gap-2 h-64 px-4">
                 {labels.map((label, index) => (
@@ -203,18 +201,16 @@ const PokeStatsDashboardPage: React.FC = () => {
         const element = snapshotRef.current;
         if (!element) return;
 
-        html2canvas(element, { 
-            backgroundColor: '#212121', // Match poke-gray-darkest
-            useCORS: true,
-            width: element.scrollWidth,
-            height: element.scrollHeight + 250,
-            windowWidth: element.scrollWidth,
-            windowHeight: element.scrollHeight + 250,
-        }).then((canvas: any) => {
+        domtoimage.toJpeg(element, { 
+            bgcolor: '#212121', // Match poke-gray-darkest
+            quality: 0.95,
+        }).then((dataUrl: string) => {
             const link = document.createElement('a');
             link.download = `${trainerName.replace(/\s+/g, '_') || 'trainer'}-pokestats.jpeg`;
-            link.href = canvas.toDataURL('image/jpeg', 0.95);
+            link.href = dataUrl;
             link.click();
+        }).catch((error: any) => {
+            console.error('Snapshot failed:', error);
         });
     };
     

@@ -9,7 +9,7 @@ import GenerationFilter from '../components/GenerationFilter';
 import PokeballIcon from '../components/icons/PokeballIcon';
 
 // This is a browser-only library, so we need to declare it for TypeScript
-declare const html2canvas: any;
+declare const domtoimage: any;
 
 const TeamMemberCard: React.FC<{ pokemon: Pokemon; onRemove: (id: number) => void }> = ({ pokemon, onRemove }) => (
     <div className="bg-poke-gray-dark rounded-xl p-4 relative shadow-lg flex items-center gap-4 transition-all duration-300 hover:shadow-yellow-500/20 hover:-translate-y-1">
@@ -156,18 +156,16 @@ const TeamBuilderPage: React.FC = () => {
     const element = snapshotRef.current;
     if (!element) return;
 
-    html2canvas(element, { 
-        backgroundColor: '#212121',
-        useCORS: true,
-        width: element.scrollWidth,
-        height: element.scrollHeight + 250,
-        windowWidth: element.scrollWidth,
-        windowHeight: element.scrollHeight + 250,
-    }).then((canvas: any) => {
-        const link = document.createElement('a');
-        link.download = `${activeTeam?.name || 'pokemon-team'}-snapshot.jpeg`;
-        link.href = canvas.toDataURL('image/jpeg', 0.95);
-        link.click();
+    domtoimage.toJpeg(element, {
+      bgcolor: '#212121',
+      quality: 0.95,
+    }).then((dataUrl: string) => {
+      const link = document.createElement('a');
+      link.download = `${activeTeam?.name || 'pokemon-team'}-snapshot.jpeg`;
+      link.href = dataUrl;
+      link.click();
+    }).catch((error: any) => {
+        console.error('Snapshot failed:', error);
     });
   };
 

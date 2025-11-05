@@ -8,6 +8,7 @@ const TeamManager: React.FC = () => {
     const [isRenaming, setIsRenaming] = useState(false);
     const [inputValue, setInputValue] = useState('');
     const inputRef = useRef<HTMLInputElement>(null);
+    const containerRef = useRef<HTMLDivElement>(null);
 
     const teamList = Object.values(teams);
 
@@ -56,6 +57,12 @@ const TeamManager: React.FC = () => {
         }
     };
     
+    const handleContainerBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+        if (!containerRef.current?.contains(e.relatedTarget as Node | null)) {
+            resetState();
+        }
+    };
+
     return (
         <div className="bg-poke-gray-dark/50 p-4 rounded-lg mb-8 flex flex-wrap items-center justify-center gap-4">
             <select
@@ -71,14 +78,13 @@ const TeamManager: React.FC = () => {
             </select>
 
             {(isCreating || isRenaming) ? (
-                <div className="flex gap-2">
+                <div ref={containerRef} onBlur={handleContainerBlur} className="flex gap-2">
                     <input
                         ref={inputRef}
                         type="text"
                         value={inputValue}
                         onChange={(e) => setInputValue(e.target.value)}
                         onKeyDown={handleKeyDown}
-                        onBlur={resetState}
                         placeholder={isCreating ? "New team name..." : "Rename team..."}
                         className="bg-gray-800 text-white p-2 rounded-md border border-gray-600 focus:ring-poke-yellow focus:border-poke-yellow"
                     />
