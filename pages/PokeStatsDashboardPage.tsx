@@ -203,37 +203,18 @@ const PokeStatsDashboardPage: React.FC = () => {
         const element = snapshotRef.current;
         if (!element) return;
 
-        const originalStyles: { element: HTMLElement; overflow: string }[] = [];
-        let parent = element.parentElement;
-
-        // Temporarily set parent overflow to visible
-        while (parent) {
-            const style = window.getComputedStyle(parent);
-            if (style.overflow !== 'visible') {
-                originalStyles.push({ element: parent, overflow: parent.style.overflow });
-                parent.style.overflow = 'visible';
-            }
-            if (parent === document.body) break;
-            parent = parent.parentElement;
-        }
-
         html2canvas(element, { 
             backgroundColor: '#212121', // Match poke-gray-darkest
             useCORS: true,
             width: element.scrollWidth,
-            height: element.scrollHeight,
+            height: element.scrollHeight + 250,
             windowWidth: element.scrollWidth,
-            windowHeight: element.scrollHeight,
+            windowHeight: element.scrollHeight + 250,
         }).then((canvas: any) => {
             const link = document.createElement('a');
             link.download = `${trainerName.replace(/\s+/g, '_') || 'trainer'}-pokestats.jpeg`;
             link.href = canvas.toDataURL('image/jpeg', 0.95);
             link.click();
-        }).finally(() => {
-            // Restore original overflow styles
-            originalStyles.forEach(({ element, overflow }) => {
-                element.style.overflow = overflow;
-            });
         });
     };
     

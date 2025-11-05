@@ -1,3 +1,7 @@
+import type { AuthError, Session, User } from '@supabase/supabase-js';
+
+export { Session, User };
+
 export interface PokemonStat {
   hp: number;
   attack: number;
@@ -26,6 +30,7 @@ export interface PokemonDataContextType {
 export interface RatingsContextType {
     ratings: Record<string, number>;
     setRating: (pokemonId: number, rating: number) => void;
+    isRatingsLoading: boolean;
 }
 
 export interface Team {
@@ -38,10 +43,17 @@ export interface TeamContextType {
     teams: Record<string, Team>;
     activeTeamId: string | null;
     activeTeam: Team | null;
-    createTeam: (name: string) => void;
-    deleteTeam: (teamId: string) => void;
-    renameTeam: (teamId: string, newName: string) => void;
+    createTeam: (name: string) => Promise<void>;
+    deleteTeam: (teamId: string) => Promise<void>;
+    renameTeam: (teamId: string, newName: string) => Promise<void>;
     setActiveTeam: (teamId: string | null) => void;
-    addPokemonToTeam: (pokemon: Pokemon) => void;
-    removePokemonFromTeam: (pokemonId: number) => void;
+    addPokemonToTeam: (pokemon: Pokemon) => Promise<void>;
+    removePokemonFromTeam: (pokemonId: number) => Promise<void>;
+    isTeamsLoading: boolean;
+}
+
+export interface AuthContextType {
+    session: Session | null;
+    user: User | null;
+    signOut: () => Promise<{ error: AuthError | null; }>;
 }

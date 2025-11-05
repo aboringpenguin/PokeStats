@@ -1,17 +1,19 @@
-
 import React, { useState } from 'react';
 import PokedexPage from './pages/PokedexPage';
 import TeamBuilderPage from './pages/TeamBuilderPage';
 import PokeStatsDashboardPage from './pages/PokeStatsDashboardPage';
+import AuthPage from './pages/AuthPage';
 import { PokemonDataProvider } from './contexts/PokemonDataContext';
 import { RatingsProvider } from './contexts/RatingsContext';
 import { TeamProvider } from './contexts/TeamContext';
+import { useAuth } from './contexts/AuthContext';
 import Navbar from './components/Navbar';
 
 export type Page = 'pokedex' | 'team-builder' | 'dashboard';
 
 const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('pokedex');
+  const { session } = useAuth();
 
   const renderPage = () => {
     switch (currentPage) {
@@ -25,6 +27,10 @@ const App: React.FC = () => {
         return <PokedexPage />;
     }
   };
+
+  if (!session) {
+    return <AuthPage />;
+  }
 
   return (
     <PokemonDataProvider>
